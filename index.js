@@ -30,7 +30,7 @@ async function startBot() {
         auth: state,
         printQRInTerminal: !usePairingCode,
         logger: pino({ level: 'fatal' }),
-        browser: Browsers.macOS('Safari'), // Menentukan jenis browser
+        browser: Browsers.macOS('Meon XD'), // Menentukan jenis browser
         syncFullHistory: true,
         markOnlineOnConnect: false,
     });
