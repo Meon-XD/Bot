@@ -62,7 +62,7 @@ node index.js
 
 ```sh
 while true; do
-  printf "\r⌛ Loading... %s" "$(date +%T)";
+  printf "\r⌛ Waktu Saat Ini: %s" "$(date '+%H:%M:%S')";
   sleep 1;
 done
 ```
@@ -74,5 +74,5 @@ done
 MIT License - Silakan gunakan dan modifikasi sesuai kebutuhan!
 
 
-📌 **Dibuat oleh [username] dengan ❤️**
+📌 **Dibuat oleh R.D.T dengan ❤️**
 
