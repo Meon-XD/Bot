@@ -12,6 +12,7 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.12",
     "fs-extra": "^11.3.0",
+    "link-preview-js": "^3.0.14",
     "pino": "^9.6.0",
     "qrcode-terminal": "^0.12.0"
   }
