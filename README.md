@@ -1,4 +1,4 @@
-# Bot
+
 
 # MeonBot - WhatsApp Bot
 
@@ -61,10 +61,8 @@ node index.js
 ## ⏳ Waktu
 
 ```sh
-while true; do
-  printf "\r⌛ Waktu Saat Ini: %s" "$(date '+%H:%M:%S')";
-  sleep 1;
-done
+[![Demo](https://asciinema.org/a/123456.svg)](https://asciinema.org/a/123456)
+
 ```
 
 ---
