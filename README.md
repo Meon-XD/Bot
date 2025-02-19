@@ -58,15 +58,6 @@ node index.js
 
 ---
 
-## ⏳ Waktu
-
-
-[![Demo](https://asciinema.org/a/123456.svg)](https://asciinema.org/a/123456)
-
-
-
----
-
 ## 📜 Lisensi
 
 MIT License - Silakan gunakan dan modifikasi sesuai kebutuhan!
