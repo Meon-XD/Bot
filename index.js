@@ -30,7 +30,7 @@ async function startBot() {
         auth: state,
         printQRInTerminal: !usePairingCode,
         logger: pino({ level: 'fatal' }),
-        browser: Browsers.macOS('Meon XD'), // Menentukan jenis browser
+        browser: Browsers.macOS('Safari'), // Menentukan jenis browser
         syncFullHistory: true,
         markOnlineOnConnect: false,
     });
@@ -57,9 +57,56 @@ async function startBot() {
 
     meon.ev.on('messages.upsert', async ({ messages }) => {
         if (!messages[0].key.fromMe) {
-            botHandler(meon, messages[0]);
+          const msg = messages[0]
+            botHandler(meon, msg);
+            meon.readMessages(msg.key)
         }
     });
+    
+    
+    //React Pesan
+    const react = await meon.sendMessage(msg.jid, { react: {
+      text: "🤖",
+      key: msg.key
+    }})
+    console.log(react)
+    
+    
+    if(!msg.type !== "extendedTextMessage") return;
+    
+    if(!msg.fromMe || msg.text !== "p") return;
+    const sendMsg = await meon.sendMessage(msg.jid, { text: "ada yang bisa di bantu"});
+    
+    
+    if(!msg.messages) return;
+     console.log(msg)
+    
+    //Auto read status wa
+    if(msg.jid === "status@broadcast") return
+    meon.readMessage([message[0].key]);
+    
+    //Pesan dari grup
+    msg.isGroup = msg.jid.endsWith("@g.us");
+    msg.userJid = msg.isGroup ? msg.key.participants : msg.key.remoteJid
+    
+    //Name frmo profile
+    msg.userName = msg.pushName;
+    msg.fromMe = msg.mey.fromMe
+    
+    msg.type = object.keys(msg.message)[0];
+    
+    //menerima informasi mengenai grup
+    meon.ev.on("group.participants.update",(group) => {
+      console.log(group)
+    });
+    
+    //Anti Call
+    meon.ev.on("call", (call) => {
+      if(call[0].status === "offer") {
+        meon.rejectCall(call[0].id, call[0].from)
+        console.log(call);
+      }
+    })
 }
 
 startBot();
