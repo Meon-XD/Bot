@@ -60,10 +60,10 @@ node index.js
 
 ## ⏳ Waktu
 
-```sh
+
 [![Demo](https://asciinema.org/a/123456.svg)](https://asciinema.org/a/123456)
 
-```
+
 
 ---
 
