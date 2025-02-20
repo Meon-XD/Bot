@@ -1,74 +1,66 @@
 const settings = require('./settings');
-const fs = require('fs');
+const axios = require('axios');
 
 module.exports = async (meon, msg) => {
-    const { key, message } = msg;
-    const id = key.remoteJid;
+    const { key, message, pushName } = msg;
+    const chatId = key.remoteJid;
     if (!message) return;
 
     let text = message.conversation || message.extendedTextMessage?.text || '';
     if (!text.startsWith(settings.prefix)) return;
 
-    const command = text.slice(1).trim().split(' ')[0].toLowerCase();
+    console.log(`📩 Menerima perintah dari ${pushName || chatId}: ${text}`);
+
+    const args = text.slice(settings.prefix.length).trim().split(/\s+/);
+    const command = args.shift().toLowerCase();
 
     switch (command) {
         case 'ping':
-            await meon.sendMessage(id, { text: 'Pong!' });
+            await meon.sendMessage(chatId, { text: 'Pong!' });
             break;
 
         case 'info':
-            await meon.sendMessage(id, { 
-                text: `🤖 Nama Bot: ${settings.botName}\n👤 Owner: ${settings.ownerName}` 
-            });
+            await meon.sendMessage(chatId, { text: `🤖 Nama Bot: ${settings.botName}\n👤 Owner: ${settings.ownerName}` });
             break;
 
-        case 'menu': {
-            let teks = `
-=========[ Info Bot]>
-Nama: ${settings.botName}
-Nama Owner: ${settings.ownerName}
+        case 'echo':
+            if (args.length === 0) {
+                await meon.sendMessage(chatId, { text: '⚠️ Harap masukkan teks untuk diulang!' });
+            } else {
+                await meon.sendMessage(chatId, { text: args.join(' ') });
+            }
+            break;
 
-=========[ Number Info ]>
-Owner: ${settings.ownerNumber}
-Bot: ${settings.botNumber}
-
-=========[  List Menu  ]>
- *.ping*
- *.info*
- *.menu*
-
-> Created by ${settings.ownerName} ${settings.ownerNumber}
-> ${settings.wagc}
-`;
-
+        case 'mediafire': {
+            if (args.length === 0) return meon.sendMessage(chatId, { text: '⚠️ Masukkan link MediaFire!' });
+            const mediafireUrl = args[0];
+            const apiUrl = `https://bk9.fun/download/mediafire?url=${mediafireUrl}`;
+            
             try {
-                let videoPath = './data/src/meon.mp4';
-                if (!fs.existsSync(videoPath)) {
-                    return await meon.sendMessage(id, { text: '❌ Video tidak ditemukan!' });
+                const response = await axios.get(apiUrl);
+                if (response.data.status) {
+                    const fileLink = response.data.BK9.link;
+                    const fileName = response.data.BK9.filename || 'downloaded_file';
+                    
+                    const fileResponse = await axios.get(fileLink, { responseType: 'arraybuffer' });
+                    const buffer = Buffer.from(fileResponse.data, 'binary');
+                    
+                    await meon.sendMessage(chatId, { 
+                        document: buffer, 
+                        fileName: fileName, 
+                        mimetype: 'application/octet-stream' 
+                    });
+                } else {
+                    await meon.sendMessage(chatId, { text: '❌ Gagal mengunduh file dari MediaFire!' });
                 }
-
-                await meon.sendMessage(id, { 
-                    video: fs.readFileSync(videoPath),
-                    caption: teks,
-                    gifPlayback: true
-                });
             } catch (error) {
-                console.error('Error mengirim video:', error);
-                await meon.sendMessage(id, { text: '⚠️ Terjadi kesalahan saat mengirim video!' });
+                await meon.sendMessage(chatId, { text: `❌ Error: ${error.message}` });
             }
             break;
         }
 
         default:
-            await meon.sendMessage(id, { text: '❌ Perintah tidak dikenal!' });
+            await meon.sendMessage(chatId, { text: '❌ Perintah tidak dikenal!' });
             break;
     }
 };
-
-let file = require.resolve(__filename)
-fs.watchFile(file, () => {
-	fs.unwatchFile(file)
-	console.log(chalk.redBright(`Update'${__filename}'`))
-	delete require.cache[file]
-	require(file)
-})
