@@ -1,120 +1,328 @@
-const { makeWASocket, useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys');
-const pino = require('pino');
-const qrcode = require('qrcode-terminal');
+const {
+  makeWASocket,
+  DisconnectReason,
+  useMultiFileAuthState,
+  Browsers,
+  downloadMediaMessage,
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const inquirer = require("inquirer");
+const fs = require("fs");
+const chalk = require('chalk')
 const readline = require('readline');
-const chalk = require('chalk');
-const botHandler = require('./bot');
-const fs = require('fs')
 
-const usePairingCode = true; // Gunakan kode pairing jika true
+usePairingCode = true
 
-// Fungsi untuk membaca input dari terminal
 const question = (text) => {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) => {
+    rl.question(text, (answer) => {
+      rl.close();
+      resolve(answer);
     });
-
-    return new Promise((resolve) => {
-        rl.question(text, (answer) => {
-            rl.close();
-            resolve(answer);
-        });
-    });
+  });
 };
 
-async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('./meon');
 
-    const meon = makeWASocket({
-        auth: state,
-        printQRInTerminal: !usePairingCode,
-        logger: pino({ level: 'fatal' }),
-        browser: Browsers.macOS('Safari'), // Menentukan jenis browser
-        syncFullHistory: true,
-        markOnlineOnConnect: false,
-    });
 
-    // Jika menggunakan pairing code dan belum terdaftar
-    if (usePairingCode && !state.creds.registered) {
-        const phoneNumber = await question(
-            chalk.greenBright('Masukkan nomor WhatsApp Anda (contoh: 628xxx): ')
-        );
+//Bot Info
 
-        const code = await meon.requestPairingCode(phoneNumber.trim());
-        console.log(chalk.yellowBright(`Kode pairing Anda adalah: ${code}`));
+  botName = 'meon Bot'
+  //wagc: 'https://chat.whatsapp.com/C0ZVjPYNaOF1Uk0lOA3L2g'
+  ch = 'https://whatsapp.com/channel/0029VajUoDV9mrGmUXtZy91a'
+  thumb = fs.readFileSync('./meon.png')
+  
+  async function reply(sock, msg, text) {
+    try {
+        await sock.sendMessage(msg.jid, { 
+            text: text, 
+            contextInfo: {
+                mentionedJid: [msg.sender],
+                externalAdReply: {
+                    title: botName,
+                    mediaType: 1,
+                    previewType: 0,
+                    thumbnail: thumb,
+                    renderLargerThumbnail: true,
+                    sourceUrl: ch
+                }
+            },
+            quoted: msg
+        });
+    } catch (err) {
+        console.error("Error saat mengirim reply:", err);
     }
-
-    meon.ev.on('creds.update', saveCreds);
-    meon.ev.on('connection.update', ({ connection, lastDisconnect }) => {
-        if (connection === 'close') {
-            console.log('Koneksi terputus, mencoba menghubungkan kembali...');
-            startBot();
-        } else if (connection === 'open') {
-            console.log('Bot terhubung ke WhatsApp!');
-        }
-    });
-
-    meon.ev.on('messages.upsert', async ({ messages }) => {
-        if (!messages[0].key.fromMe) {
-          const msg = messages[0]
-            botHandler(meon, msg);
-            meon.readMessages(msg.key)
-        }
-    });
-    
-    
-    //React Pesan
-    const react = await meon.sendMessage(msg.jid, { react: {
-      text: "🤖",
-      key: msg.key
-    }})
-    console.log(react)
-    
-    
-    if(!msg.type !== "extendedTextMessage") return;
-    
-    if(!msg.fromMe || msg.text !== "p") return;
-    const sendMsg = await meon.sendMessage(msg.jid, { text: "ada yang bisa di bantu"});
-    
-    
-    if(!msg.messages) return;
-     console.log(msg)
-    
-    //Auto read status wa
-    if(msg.jid === "status@broadcast") return
-    meon.readMessage([message[0].key]);
-    
-    //Pesan dari grup
-    msg.isGroup = msg.jid.endsWith("@g.us");
-    msg.userJid = msg.isGroup ? msg.key.participants : msg.key.remoteJid
-    
-    //Name frmo profile
-    msg.userName = msg.pushName;
-    msg.fromMe = msg.mey.fromMe
-    
-    msg.type = object.keys(msg.message)[0];
-    
-    //menerima informasi mengenai grup
-    meon.ev.on("group.participants.update",(group) => {
-      console.log(group)
-    });
-    
-    //Anti Call
-    meon.ev.on("call", (call) => {
-      if(call[0].status === "offer") {
-        meon.rejectCall(call[0].id, call[0].from)
-        console.log(call);
-      }
-    })
 }
 
-startBot();
 
-let file = require.resolve(__filename)
+
+//fitur group
+async function groupFitur(sock, msg, action) {
+    if (!msg.isGroup) return;
+    const participants = msg.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
+    if (participants.length === 0) return;
+    
+    try {
+        await sock.groupParticipantsUpdate(msg.jid, participants, action);
+        await sock.sendMessage(msg.jid, { text: `Sukses ${action} peserta!` });
+    } catch (error) {
+        console.error(`Gagal ${action} peserta:`, error);
+    }
+}
+
+
+
+async function connectToWhatsApp() {
+  const { state, saveCreds } = await useMultiFileAuthState("./sesi");
+  const sock = makeWASocket({
+    logger: pino({ level: "fatal" }),
+    auth: state,
+    printQRInTerminal: !usePairingCode,
+    defaultQueryTimeoutMs: undefined,
+    keepAliveIntervalMs: 30000,
+    browser: Browsers.macOS("Edge"),
+    shouldSyncHistoryMessage: () => false,
+    markOnlineOnConnect: true,
+    syncFullHistory: false,
+    generateHighQualityLinkPreview: true,
+  });
+  
+  //Di dalam Fungsi
+if (usePairingCode && !state.creds.registered) {
+    const phoneNumber = await question(
+      chalk.greenBright('Masukkan nomor WhatsApp Anda (contoh: 628xxx): ')
+    );
+    const code = await sock.requestPairingCode(phoneNumber.trim());
+    console.log(chalk.yellowBright(`Kode pairing Anda adalah: ${code}`));
+  }
+  
+  
+  sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
+    if (connection === "close") {
+      const shouldReconnect =
+        lastDisconnect.error?.output.statusCode !== DisconnectReason.loggedOut;
+      if (shouldReconnect) {
+        console.log("Menjalankan ulang");
+        connectToWhatsApp();
+      }
+    }
+    if (connection === "open") {
+      console.log("Terhubung");
+    }
+  });
+  sock.ev.on("creds.update", saveCreds);
+  // Event Messages
+  sock.ev.on("messages.upsert", async ({ messages }) => {
+    const msg = messages[0];
+    // Jika bukan sebuah pesan text atau media kita abaikan saja
+    if (!msg.message) return;
+    // message jid
+    msg.jid = msg.key.remoteJid;
+    // jika sebuah status kita tambahkan auto read status
+    if (msg.jid === "status@broadcast") return sock.readMessages([msg.key]);
+    // Message from group
+    msg.isGroup = msg.jid.endsWith("@g.us");
+    // User jid || Jika dari group kita ambil dari participan namun jika bukan dari group, kita ambil dari remoteJid
+    msg.userJid = msg.isGroup ? msg.key.participant : msg.key.remoteJid; // Atau msg.jid
+    // Nama dari profile pengirim
+    msg.userName = msg.pushName;
+    // Jika pesan dari bot
+    msg.fromMe = msg.key.fromMe;
+    //group
+    if(msg.text === 'test') {
+      const code = await sock.groupRevokeInvite(jid)
+     console.log('New group code: ' + code)
+    }
+    
+    
+    // Type dari sebuah pesan
+    msg.type = Object.keys(msg.message)[0];
+    // Pesan text & Jika pesan extendedTextMessage kita ambil textnya dan jika pesan conversation kita ambil conversation. Namun jika bukan dari extendedTextMessage dan juga bukan dari conversation kita beri empty string.
+    msg.text =
+      msg.type === "extendedTextMessage"
+        ? msg.message.extendedTextMessage.text
+        : msg.type === "conversation"
+        ? msg.message.conversation
+        : msg.type === "imageMessage"
+        ? msg.message.imageMessage.caption
+        : msg.type === "videoMessage"
+        ? msg.message.videoMessage.caption
+        : "";
+        await sock.readMessages([msg.key]);
+    /// Command
+    msg.cmd = msg.text.trim().split(" ")[0].replace(".", "").toLowerCase();
+    /// Arguments
+    msg.args = msg.text
+      .replace(/^\S*\b/g, "")
+      .trim()
+      .split("|");
+    console.log(msg);
+    switch (msg.cmd) {
+            case "menu": {
+        const teks = `
+        Halo kak ${msg.userName}
+        =======[ List Menu ]=======
+        - .menu
+        - .ping
+        - .ytdl
+        
+        ====[ Group Menu ]=====
+        - .createGc
+        - .add <number>
+        - .leave
+        - .kick
+        - .setsubject
+        - .setdesc
+        - .promote
+        - .demote
+        - .revoke
+        - .linkgc
+        ==========================
+        `;
+        reply(msg, teks);
+        break;
+      }
+
+      break;
+      
+      case "ping": {
+        console.log("Command ping");
+      }
+        break;
+        
+      case "ytdl": {
+        console.log("Command ytdl");
+        reply(sock, msg, 'fitur ini belum tersedia ')
+      }
+        break;
+
+       case 'creategc': case 'newgc': { 
+       if (!msg.text) { 
+         await sock.sendMessage(msg.jid, { 
+           text: 'Silakan masukkan nama grup! Contoh: .creategc NamaGrup' }); return; 
+     }
+try {
+    const group = await sock.groupCreate(msg.text, [msg.jid]);
+    let teks = `Selamat Bergabung di *${msg.text}`
+    reply(teks)
+} catch (error) {
+    let teks = 'Gagal membuat grup! Pastikan akun ini memiliki izin untuk membuat grup.' 
+    reply(sock, msg, teks)
+    console.error(error);
+}}
+     break;
+     
+     case 'newlink': case 'revoke': {
+       const code = await sock.groupRevokeInvite(msg.jid)
+       let teks = 'Link Grup Update Kak :\n\n https://chat.whatsapp.com/' 
+       reply(sock, msg, teks + code)
+     }
+     break;
+      case "add":
+        case "remove":
+        case "promote":
+        case "demote":
+            await groupFitur(sock, msg, msg.cmd);
+     break;
+     
+     case 'linkgc': {
+       const code = await sock.groupInviteCode(msg.jid)
+       let teks = 'group code: https://chat.whatsapp.com/'
+       reply(sock, msg, teks + code)
+     }
+     break;
+     
+     case 'tagall': {
+       try {
+        // Ambil daftar semua grup yang diikuti bot
+        const groups = await sock.groupFetchAllParticipating();
+        // Pastikan bot berada di grup yang sesuai
+        const groupMetadata = groups[msg.jid];
+        if (!groupMetadata) {
+            await sock.sendMessage(msg.jid, { text: "Bot tidak ada di grup ini!" });
+            }
+      
+        // Ambil semua peserta grup
+        const participants = groupMetadata.participants.map(p => p.id);
+        
+        // Buat pesan mention
+        let mentionText = `👥 *${msg.text}* 👥\n`;
+        mentionText += participants.map(p => `@${p.split('@')[0]}`).join("\n");
+
+        await sock.sendMessage(msg.jid, {
+    text: mentionText,
+    mentions: `Name ${participants}`
+});
+    } catch (err) {
+        console.error("Error saat menjalankan tagall:", err);
+        await sock.sendMessage(msg.jid, { text: "Terjadi kesalahan saat menjalankan tagall." });
+    }
+        }
+     break;
+     
+        default:
+        if (msg.fromMe) return;
+        reply(sock, msg, "Fitur tidak ditemukan.");
+        break;
+
+    }
+  });
+  
+  
+  
+  sock.ev.on("group-participants.update", async (group) => {
+    console.log(group);
+
+    const { id, action, participants } = group; // Ambil ID grup dan peserta yang terlibat
+
+    let newMember = "Selamat Bergabung!";
+    let outMember = "Goodbye, teman!";
+    let promoteMsg = "Selamat atas kenaikan jabatan!";
+    let demoteMsg = "Jabatan Anda telah diturunkan.";
+
+    try {
+        let teks;
+        if (action === "add") {
+            teks = newMember;
+        } else if (action === "remove") {
+            teks = outMember;
+        } else if (action === "promote") {
+            teks = promoteMsg;
+        } else if (action === "demote") {
+            teks = demoteMsg;
+        }
+
+        if (teks) {
+            await sock.sendMessage(id, { 
+                text: teks, 
+                mentions: participants // Menyebut peserta yang terlibat
+            });
+        }
+    } catch (err) {
+        console.log("Error:", err);
+    }
+});
+
+sock.ev.on("call", async (call) => {
+    if (call[0].status === "offer") {
+        await sock.rejectCall(call[0].id, call[0].from);
+        let callMsg = "Sedang tidak dapat menerima panggilan video/suara, mohon coba beberapa saat lagi.";
+        await sock.sendMessage(call[0].from, { text: callMsg });
+        console.log(call);
+    }
+});
+
+}
+
+connectToWhatsApp();
+
+let file = require.resolve(__filename);
 fs.watchFile(file, () => {
-	fs.unwatchFile(file)
-	console.log(chalk.redBright(`Update'${__filename}'`))
-	delete require.cache[file]
-	require(file)
-})
+    fs.unwatchFile(file);
+    console.log(chalk.redBright(`Update '${__filename}'`));
+    delete require.cache[file];
+    require(file);
+});
