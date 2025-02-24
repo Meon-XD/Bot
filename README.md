@@ -14,6 +14,8 @@
 ✅ **Info** - Menampilkan informasi bot dan owner  
 ✅ **Menu** - Mengirim video dengan teks  
 
+✅ **Dll** - masih banyak lagi males ngetik.
+
 ---
 
 ## 🔧 Persyaratan
@@ -28,8 +30,8 @@
 
 1️⃣ **Clone Repository**
 ```sh
-git clone https://github.com/username/meonbot.git
-cd meonbot
+git clone https://github.com/Meon-XD/Bot.git
+cd Bot
 ```
 
 2️⃣ **Install Dependencies**
