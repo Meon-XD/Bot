@@ -32,6 +32,8 @@
 ```sh
 git clone https://github.com/Meon-XD/Bot.git
 cd Bot
+GC BOT
+https://chat.whatsapp.com/EZVnPvQd1jU7F4xmCT01YZ
 ```
 
 2️⃣ **Install Dependencies**
